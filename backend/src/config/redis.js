@@ -6,9 +6,6 @@ let redisClient = null;
 const connectRedis = async () => {
   try {
     const config = {
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT) || 6379,
-      password: process.env.REDIS_PASSWORD || undefined,
       maxRetriesPerRequest: 3,
       retryStrategy(times) {
         const delay = Math.min(times * 50, 2000);
@@ -24,6 +21,9 @@ const connectRedis = async () => {
     if (process.env.REDIS_URL) {
       redisClient = new Redis(process.env.REDIS_URL, config);
     } else {
+      config.host = process.env.REDIS_HOST || 'localhost';
+      config.port = parseInt(process.env.REDIS_PORT) || 6379;
+      config.password = process.env.REDIS_PASSWORD || undefined;
       redisClient = new Redis(config);
     }
 

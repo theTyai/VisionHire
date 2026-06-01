@@ -17,6 +17,9 @@ import AdminQuestions from './pages/AdminQuestions';
 import AdminLeaderboard from './pages/AdminLeaderboard';
 import AdminAnalytics from './pages/AdminAnalytics';
 import AdminMonitor from './pages/AdminMonitor';
+import LandingPage from './pages/LandingPage';
+import ApplicationFormPage from './pages/ApplicationFormPage';
+import AdminApplications from './pages/AdminApplications';
 
 // Components
 import ToastContainer from './components/common/ToastContainer';
@@ -81,8 +84,10 @@ function App() {
           <Route path="/admin/analytics/:assessmentId" element={<ProtectedRoute roles={['admin', 'superadmin']}><AdminAnalytics /></ProtectedRoute>} />
           <Route path="/admin/monitor" element={<ProtectedRoute roles={['admin', 'superadmin']}><AdminMonitor /></ProtectedRoute>} />
 
-          {/* Redirects */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          {/* Landing & Redirects */}
+          <Route path="/" element={<PublicRoute><LandingPage /></PublicRoute>} />
+          <Route path="/apply" element={<PublicRoute><ApplicationFormPage /></PublicRoute>} />
+          <Route path="/admin/applications" element={<ProtectedRoute roles={['admin', 'superadmin']}><AdminApplications /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>

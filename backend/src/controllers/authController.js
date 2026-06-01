@@ -18,6 +18,20 @@ const register = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already registered.' });
     }
 
+    if (role !== 'admin' && role !== 'superadmin') {
+      const { SystemConfig, RecruitmentApplication } = require('../models');
+      const config = await SystemConfig.findOne();
+      
+      if (config && !config.isOAEnabled) {
+        return res.status(403).json({ success: false, message: 'Online Assessment registrations are currently closed.' });
+      }
+
+      const applicant = await RecruitmentApplication.findOne({ email: email.toLowerCase() });
+      if (!applicant) {
+        return res.status(403).json({ success: false, message: 'This email is not registered for recruitment. You must use the same email you applied with.' });
+      }
+    }
+
     // Only allow candidate self-registration; admin roles require existing admin
     const allowedRole = role === 'admin' && req.user?.role === 'superadmin' ? 'admin' : 'candidate';
 

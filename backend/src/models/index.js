@@ -208,7 +208,7 @@ const candidateAnswerSchema = new mongoose.Schema({
 candidateAnswerSchema.index({ attemptId: 1, questionId: 1 }, { unique: true });
 candidateAnswerSchema.index({ attemptId: 1 });
 candidateAnswerSchema.index({ candidateId: 1, assessmentId: 1 });
-candidateAnswerSchema.index({ questionId: 1 }); // for analytics
+candidateAnswerSchema.index({ assessmentId: 1, questionId: 1 }); // for analytics
 
 const CandidateAnswer = mongoose.model('CandidateAnswer', candidateAnswerSchema);
 
@@ -307,4 +307,33 @@ resultSchema.index({ attemptId: 1 }, { unique: true });
 
 const Result = mongoose.model('Result', resultSchema);
 
-module.exports = { User, Assessment, Question, CandidateAttempt, CandidateAnswer, Violation, Result };
+// ============================================================
+// RECRUITMENT APPLICATION MODEL
+// ============================================================
+const recruitmentApplicationSchema = new mongoose.Schema({
+  name: { type: String, required: true, trim: true },
+  scholarNo: { type: String, required: true, trim: true },
+  section: { type: String, required: true, trim: true },
+  branch: { type: String, enum: ['CSE', 'MDS'], required: true },
+  email: { type: String, required: true, lowercase: true, trim: true },
+  primaryDomain: { type: String, enum: ['Technical', 'Executive'], required: true },
+  secondaryDomain: { type: String, enum: ['Graphics Designer', 'Sponsorship'], required: true },
+  status: { type: String, enum: ['pending', 'reviewed', 'shortlisted', 'rejected'], default: 'pending' },
+}, { timestamps: true });
+
+recruitmentApplicationSchema.index({ email: 1 });
+recruitmentApplicationSchema.index({ scholarNo: 1 });
+recruitmentApplicationSchema.index({ status: 1 });
+
+// ============================================================
+// SYSTEM CONFIG MODEL (Singleton)
+// ============================================================
+const systemConfigSchema = new mongoose.Schema({
+  isApplicationOpen: { type: Boolean, default: true },
+  isOAEnabled: { type: Boolean, default: false },
+}, { timestamps: true });
+
+const SystemConfig = mongoose.model('SystemConfig', systemConfigSchema);
+const RecruitmentApplication = mongoose.model('RecruitmentApplication', recruitmentApplicationSchema);
+
+module.exports = { User, Assessment, Question, CandidateAttempt, CandidateAnswer, Violation, Result, RecruitmentApplication, SystemConfig };

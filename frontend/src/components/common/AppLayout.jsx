@@ -22,6 +22,7 @@ export default function AppLayout({ children }) {
     { label: 'Dashboard', path: '/admin', icon: '🏠' },
     { label: 'Assessments', path: '/admin/assessments', icon: '📋' },
     { label: 'Monitor', path: '/admin/monitor', icon: '👁️' },
+    { label: 'Applications', path: '/admin/applications', icon: '📝' },
   ];
 
   const navItems = isAdmin ? adminNav : candidateNav;

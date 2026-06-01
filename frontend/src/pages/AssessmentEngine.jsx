@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch, useSelector, shallowEqual } from 'react-redux';
 import {
   startAttempt, submitAttempt, selectOption, toggleMarkForReview,
   markVisited, setCurrentIndex, clearAttempt, selectProgress,
@@ -13,6 +13,7 @@ import QuestionPanel from '../components/assessment/QuestionPanel';
 import QuestionNavigator from '../components/assessment/QuestionNavigator';
 import SubmitModal from '../components/assessment/SubmitModal';
 import ViolationWarning from '../components/assessment/ViolationWarning';
+import ErrorBoundary from '../components/common/ErrorBoundary';
 
 export default function AssessmentEngine() {
   const { id: assessmentId } = useParams();
@@ -20,9 +21,20 @@ export default function AssessmentEngine() {
   const dispatch = useDispatch();
 
   const {
-    attemptId, questions, answers, currentIndex, status, submitError, config, tabSwitchCount,
-  } = useSelector(s => s.attempt);
-  const progress = useSelector(selectProgress);
+    attemptId, questions, currentIndex, status, submitError, config, tabSwitchCount, fullscreenExitCount
+  } = useSelector(s => ({
+    attemptId: s.attempt.attemptId,
+    questions: s.attempt.questions,
+    currentIndex: s.attempt.currentIndex,
+    status: s.attempt.status,
+    submitError: s.attempt.submitError,
+    config: s.attempt.config,
+    tabSwitchCount: s.attempt.tabSwitchCount,
+    fullscreenExitCount: s.attempt.fullscreenExitCount,
+  }), shallowEqual);
+
+  const answers = useSelector(s => s.attempt.answers);
+  const progress = useSelector(selectProgress, shallowEqual);
 
   const [showSubmitModal, setShowSubmitModal] = useState(false);
   const [showViolationWarning, setShowViolationWarning] = useState(false);
@@ -30,7 +42,7 @@ export default function AssessmentEngine() {
   const questionStartTime = useRef(Date.now());
   const submittingRef = useRef(false);
 
-  const { debouncedSave, saveOnNavigation, performBulkSave } = useAutosave();
+  const { debouncedSave, saveOnNavigation } = useAutosave();
 
   // ── Start attempt on mount
   useEffect(() => {
@@ -61,9 +73,10 @@ export default function AssessmentEngine() {
 
     if (submitAttempt.fulfilled.match(result)) {
       dispatch(clearAttempt());
-      navigate(`/results/${attemptId}`);
+      navigate('/dashboard');
     } else {
       submittingRef.current = false;
+      alert(`Submission failed: ${result.payload}`);
     }
   }, [answers, attemptId, currentIndex, dispatch, navigate]);
 
@@ -92,8 +105,8 @@ export default function AssessmentEngine() {
 
   // ── Anti-cheat
   const handleViolationLimit = useCallback((type) => {
-    if (type === 'tab_switch_limit') {
-      setViolationMessage('🚫 Maximum tab switches exceeded. Assessment will be auto-submitted.');
+    if (type === 'tab_switch_limit' || type === 'fullscreen_limit') {
+      setViolationMessage('🚫 Maximum violations exceeded. Assessment will be auto-submitted.');
       setShowViolationWarning(true);
       setTimeout(() => handleFinalSubmit(true), 3000);
     }
@@ -111,14 +124,15 @@ export default function AssessmentEngine() {
     return () => window.removeEventListener('force-submit', handleForceSubmit);
   }, [handleFinalSubmit]);
 
-  // ── Tab switch warning display
+  // ── Violation warning display
+  const totalViolations = tabSwitchCount + fullscreenExitCount;
   useEffect(() => {
-    if (tabSwitchCount > 0 && tabSwitchCount < (config?.tabSwitchLimit || 3)) {
-      setViolationMessage(`Tab switch detected! Warning ${tabSwitchCount}/${config?.tabSwitchLimit || 3}`);
+    const limit = config?.tabSwitchLimit || 3;
+    if (totalViolations > 0 && totalViolations < limit) {
+      setViolationMessage(`Violation detected! Warning ${totalViolations}/${limit}`);
       setShowViolationWarning(true);
-      setTimeout(() => setShowViolationWarning(false), 4000);
     }
-  }, [tabSwitchCount, config?.tabSwitchLimit]);
+  }, [totalViolations, config?.tabSwitchLimit]);
 
   // ── Question navigation
   const navigateTo = useCallback((index) => {
@@ -220,14 +234,16 @@ export default function AssessmentEngine() {
         {/* Question area */}
         <main className="flex-1 overflow-y-auto p-4 md:p-6">
           {currentQuestion && (
-            <QuestionPanel
-              question={currentQuestion}
-              answer={answers[currentQuestion.id]}
-              questionNumber={currentIndex + 1}
-              totalQuestions={questions.length}
-              onOptionSelect={handleOptionSelect}
-              onMarkForReview={handleMarkForReview}
-            />
+            <ErrorBoundary>
+              <QuestionPanel
+                question={currentQuestion}
+                answer={answers[currentQuestion.id]}
+                questionNumber={currentIndex + 1}
+                totalQuestions={questions.length}
+                onOptionSelect={handleOptionSelect}
+                onMarkForReview={handleMarkForReview}
+              />
+            </ErrorBoundary>
           )}
 
           {/* Navigation buttons */}
@@ -275,7 +291,15 @@ export default function AssessmentEngine() {
       )}
 
       {showViolationWarning && (
-        <ViolationWarning message={violationMessage} onDismiss={() => setShowViolationWarning(false)} />
+        <ViolationWarning 
+          message={violationMessage} 
+          onDismiss={() => {
+            setShowViolationWarning(false);
+            if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(() => {});
+            }
+          }} 
+        />
       )}
     </div>
   );

@@ -25,7 +25,7 @@ api.interceptors.response.use(
   async (error) => {
     const { response } = error;
 
-    if (response?.status === 401) {
+    if (response?.status === 401 && !error.config.url.includes('/auth/logout')) {
       store.dispatch(logout());
       store.dispatch(addToast({ type: 'error', message: 'Session expired. Please login again.' }));
     }

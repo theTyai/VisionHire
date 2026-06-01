@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function SubmitModal({ progress, onConfirm, onCancel, isSubmitting }) {
+export default function SubmitModal({ progress, onConfirm, onCancel, isSubmitting }) {
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-dark-700 border border-dark-500 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-fade-in">
@@ -49,26 +49,6 @@ export function SubmitModal({ progress, onConfirm, onCancel, isSubmitting }) {
             className="flex-1 py-2.5 rounded-lg bg-brand-600 hover:bg-brand-500 text-white font-medium text-sm transition-colors disabled:opacity-50"
           >
             {isSubmitting ? 'Submitting...' : 'Submit Now'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export default function ViolationWarning({ message, onDismiss }) {
-  return (
-    <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 animate-fade-in">
-      <div className="bg-red-900/90 border border-red-500/50 rounded-xl px-5 py-3 shadow-2xl backdrop-blur-sm max-w-sm">
-        <div className="flex items-start gap-3">
-          <span className="text-xl shrink-0">⚠️</span>
-          <div>
-            <p className="text-white text-sm font-medium">{message}</p>
-          </div>
-          <button onClick={onDismiss} className="text-red-300 hover:text-white ml-2 shrink-0">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
           </button>
         </div>
       </div>

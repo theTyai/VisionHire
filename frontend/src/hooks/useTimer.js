@@ -10,7 +10,7 @@ const CRITICAL_THRESHOLD_MS = 60 * 1000;    // 1 minute
 
 export const useTimer = ({ onExpire, onWarning, onCritical } = {}) => {
   const dispatch = useDispatch();
-  const { attemptId, serverEndTime } = useSelector(state => state.attempt);
+  const { attemptId, serverEndTime, startTime } = useSelector(state => state.attempt);
 
   const [remainingMs, setRemainingMs] = useState(0);
   const [timerState, setTimerState] = useState('normal'); // normal | warning | critical | expired
@@ -109,8 +109,8 @@ export const useTimer = ({ onExpire, onWarning, onCritical } = {}) => {
     isExpired: remainingMs <= 0,
     isWarning: remainingMs <= WARNING_THRESHOLD_MS && remainingMs > CRITICAL_THRESHOLD_MS,
     isCritical: remainingMs <= CRITICAL_THRESHOLD_MS && remainingMs > 0,
-    percentage: serverEndTime
-      ? Math.max(0, (remainingMs / (new Date(serverEndTime) - new Date(useSelector(s => s.attempt.startTime)))) * 100)
+    percentage: serverEndTime && startTime
+      ? Math.max(0, (remainingMs / (new Date(serverEndTime) - new Date(startTime))) * 100)
       : 100,
   };
 };

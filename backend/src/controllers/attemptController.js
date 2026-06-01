@@ -35,12 +35,13 @@ const startAttempt = async (req, res) => {
       }
       // Resume existing active attempt
       if (existingAttempt.status === 'in-progress' || existingAttempt.status === 'started') {
-        // Check if timer expired
-        if (new Date() > existingAttempt.serverEndTime) {
-          await triggerAutoSubmit(existingAttempt._id, 'timer_expired');
-          return res.status(400).json({ success: false, message: 'Your attempt has expired.' });
+        const timeSinceStart = Date.now() - new Date(existingAttempt.startTime).getTime();
+        if (timeSinceStart < 15000) {
+          // Grace period for React Strict Mode double-fetches
+          return await resumeAttempt(existingAttempt, res);
         }
-        return await resumeAttempt(existingAttempt, res);
+        await triggerAutoSubmit(existingAttempt._id, 'abandoned_session');
+        return res.status(400).json({ success: false, message: 'You have already attempted this assessment in a previous session. Resuming is not allowed.' });
       }
     }
 
@@ -115,7 +116,7 @@ const startAttempt = async (req, res) => {
         { attemptId: attempt._id.toString(), candidateId: candidateId.toString() },
         {
           delay: assessment.config.duration * 60 * 1000 + 5000, // 5 extra seconds buffer
-          jobId: `autosubmit:${attempt._id}`,
+          jobId: `autosubmit-${attempt._id}`,
           removeOnComplete: true,
           removeOnFail: { count: 3 },
         }
@@ -175,37 +176,67 @@ const autosaveAnswer = async (req, res) => {
       return res.status(400).json({ success: false, message: 'questionId is required.' });
     }
 
-    // Validate attempt is active (Redis first, then DB)
+    // Validate attempt is active (Redis first, then DB fallback)
     const redis = getRedis();
     let isValid = true;
+    let attemptDoc = null;
 
     if (redis) {
-      const timerKey = RedisKeys.timer(attemptId);
-      const serverEndTime = await redis.get(timerKey);
-      if (serverEndTime && new Date() > new Date(serverEndTime)) {
-        isValid = false;
+      try {
+        const timerKey = RedisKeys.timer(attemptId);
+        const serverEndTime = await redis.get(timerKey);
+        if (serverEndTime && new Date() > new Date(serverEndTime)) {
+          isValid = false;
+        } else if (!serverEndTime) {
+          attemptDoc = await CandidateAttempt.findById(attemptId).select('assessmentId serverEndTime isLocked').lean();
+          if (!attemptDoc || attemptDoc.isLocked || new Date() > attemptDoc.serverEndTime) isValid = false;
+        }
+      } catch (e) {
+        attemptDoc = await CandidateAttempt.findById(attemptId).select('assessmentId serverEndTime isLocked').lean();
+        if (!attemptDoc || attemptDoc.isLocked || new Date() > attemptDoc.serverEndTime) isValid = false;
       }
+    } else {
+      attemptDoc = await CandidateAttempt.findById(attemptId).select('assessmentId serverEndTime isLocked').lean();
+      if (!attemptDoc || attemptDoc.isLocked || new Date() > attemptDoc.serverEndTime) isValid = false;
     }
 
     if (!isValid) {
-      return res.status(400).json({ success: false, message: 'Assessment time has expired.' });
+      return res.status(400).json({ success: false, message: 'Assessment time has expired or attempt is locked.' });
     }
 
-    // Upsert answer — atomic operation
-    const answer = await CandidateAnswer.findOneAndUpdate(
-      { attemptId, questionId },
-      {
-        $set: {
-          candidateId,
-          assessmentId: (await CandidateAttempt.findById(attemptId).select('assessmentId').lean())?.assessmentId,
-          selectedOptions: selectedOptions || [],
-          isMarkedForReview: isMarkedForReview ?? false,
-          timeSpent: timeSpent || 0,
-          savedAt: new Date(),
-        },
+    const assessmentId = attemptDoc?.assessmentId || (await CandidateAttempt.findById(attemptId).select('assessmentId').lean())?.assessmentId;
+
+    // Upsert answer — atomic operation with E11000 retry
+    let answer;
+    const updatePayload = {
+      $set: {
+        candidateId,
+        assessmentId,
+        selectedOptions: selectedOptions || [],
+        isMarkedForReview: isMarkedForReview ?? false,
+        timeSpent: timeSpent || 0,
+        savedAt: new Date(),
       },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
+    };
+    
+    try {
+      answer = await CandidateAnswer.findOneAndUpdate(
+        { attemptId, questionId },
+        updatePayload,
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      );
+    } catch (upsertError) {
+      if (upsertError.code === 11000) {
+        // Race condition hit, retry once
+        answer = await CandidateAnswer.findOneAndUpdate(
+          { attemptId, questionId },
+          updatePayload,
+          { upsert: true, new: true, setDefaultsOnInsert: true }
+        );
+      } else {
+        throw upsertError;
+      }
+    }
 
     // Update attempt status if still 'started'
     await CandidateAttempt.updateOne(
@@ -401,7 +432,7 @@ const submitAttempt = async (req, res) => {
       // Remove auto-submit job
       const autoSubmitQueue = getAutoSubmitQueue();
       if (autoSubmitQueue) {
-        try { await autoSubmitQueue.remove(`autosubmit:${attemptId}`); } catch (e) { /* ok */ }
+        try { await autoSubmitQueue.remove(`autosubmit-${attemptId}`); } catch (e) { /* ok */ }
       }
     }
 

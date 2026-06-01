@@ -56,7 +56,7 @@ export const connectSocket = (token) => {
     store.dispatch(updateActiveCount(data.count));
   });
 
-  socket.on('violation:live', (data) => {
+  socket.on('violation:detected', (data) => {
     store.dispatch(addNotification({
       message: `Violation: ${data.candidateName} — ${data.type.replace('_', ' ')}`,
       type: 'error',

@@ -10,12 +10,18 @@ const connectDB = async () => {
   logger.info('Worker: MongoDB connected');
 };
 
-const getConnection = () => ({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: null,
-});
+const IORedis = require('ioredis');
+const getConnection = () => {
+  if (process.env.REDIS_URL) {
+    return new IORedis(process.env.REDIS_URL, { maxRetriesPerRequest: null });
+  }
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null,
+  };
+};
 
 const processEvaluation = async (job) => {
   const { attemptId, candidateId, assessmentId, autoSubmitted } = job.data;

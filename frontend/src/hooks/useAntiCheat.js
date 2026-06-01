@@ -5,7 +5,7 @@ import { emitViolation } from '../services/socket';
 
 export const useAntiCheat = ({ onViolationLimit, tabLimit = 3 } = {}) => {
   const dispatch = useDispatch();
-  const { attemptId, tabSwitchCount, status } = useSelector(state => state.attempt);
+  const { attemptId, tabSwitchCount, fullscreenExitCount, status } = useSelector(state => state.attempt);
   const isActive = status === 'in-progress';
   const lastViolationTime = useRef({});
 
@@ -38,8 +38,14 @@ export const useAntiCheat = ({ onViolationLimit, tabLimit = 3 } = {}) => {
       if (!document.fullscreenElement && isActive) {
         dispatch(incrementFullscreenExit());
         recordViolation('fullscreen_exit', 'Exited fullscreen mode');
-        // Re-enter fullscreen
-        setTimeout(enterFullscreen, 1000);
+        
+        const totalViolations = tabSwitchCount + fullscreenExitCount + 1;
+        if (totalViolations >= tabLimit && onViolationLimit) {
+          onViolationLimit('fullscreen_limit');
+        } else {
+          // Re-enter fullscreen
+          setTimeout(enterFullscreen, 1000);
+        }
       }
     };
 
@@ -49,7 +55,8 @@ export const useAntiCheat = ({ onViolationLimit, tabLimit = 3 } = {}) => {
         dispatch(incrementTabSwitch());
         recordViolation('tab_switch', 'Switched tab or minimized window');
         
-        if (tabSwitchCount + 1 >= tabLimit && onViolationLimit) {
+        const totalViolations = tabSwitchCount + fullscreenExitCount + 1;
+        if (totalViolations >= tabLimit && onViolationLimit) {
           onViolationLimit('tab_switch_limit');
         }
       }
@@ -138,7 +145,7 @@ export const useAntiCheat = ({ onViolationLimit, tabLimit = 3 } = {}) => {
       document.removeEventListener('cut', handleCut);
       document.removeEventListener('contextmenu', handleContextMenu);
     };
-  }, [isActive, attemptId, tabSwitchCount, tabLimit, recordViolation, onViolationLimit, dispatch]);
+  }, [isActive, attemptId, tabSwitchCount, fullscreenExitCount, tabLimit, recordViolation, onViolationLimit, dispatch]);
 
   return { recordViolation };
 };

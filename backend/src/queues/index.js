@@ -4,12 +4,18 @@ const logger = require('../utils/logger');
 let evaluationQueue = null;
 let autoSubmitQueue = null;
 
-const getConnection = () => ({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT) || 6379,
-  password: process.env.REDIS_PASSWORD || undefined,
-  maxRetriesPerRequest: null, // Required for BullMQ
-});
+const IORedis = require('ioredis');
+const getConnection = () => {
+  if (process.env.REDIS_URL) {
+    return new IORedis(process.env.REDIS_URL, { maxRetriesPerRequest: null });
+  }
+  return {
+    host: process.env.REDIS_HOST || 'localhost',
+    port: parseInt(process.env.REDIS_PORT) || 6379,
+    password: process.env.REDIS_PASSWORD || undefined,
+    maxRetriesPerRequest: null, // Required for BullMQ
+  };
+};
 
 const initializeQueues = () => {
   try {

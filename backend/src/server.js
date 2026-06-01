@@ -9,7 +9,7 @@ const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
 const connectDB = require('./config/database');
-const connectRedis = require('./config/redis');
+const { connectRedis } = require('./config/redis');
 const { initializeSocket } = require('./sockets');
 const logger = require('./utils/logger');
 const errorHandler = require('./middleware/errorHandler');
@@ -22,13 +22,24 @@ const attemptRoutes = require('./routes/attempt');
 const adminRoutes = require('./routes/admin');
 const analyticsRoutes = require('./routes/analytics');
 const uploadRoutes = require('./routes/upload');
+const applicationRoutes = require('./routes/application');
+const settingsRoutes = require('./routes/settings');
 
 const app = express();
+app.set('trust proxy', 1);
+
 const server = http.createServer(app);
+
+const { initializeQueues } = require('./queues');
 
 // Connect to databases
 connectDB();
 connectRedis();
+initializeQueues();
+
+// Start workers inline for development
+require('./workers/evaluationWorker');
+require('./workers/autoSubmitWorker');
 
 // Security middleware
 app.use(helmet({
@@ -62,7 +73,7 @@ const globalLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message: 'Too many requests, please try again later.' },
-  skip: (req) => req.path.startsWith('/api/attempt/autosave'), // autosave has own limiter
+  skip: (req) => req.originalUrl.includes('/autosave'), // autosave has own limiter
 });
 app.use('/api/', globalLimiter);
 
@@ -88,6 +99,8 @@ app.use('/api/attempt', attemptRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/applications', applicationRoutes);
+app.use('/api/settings', settingsRoutes);
 
 // 404 handler
 app.use('*', (req, res) => {
