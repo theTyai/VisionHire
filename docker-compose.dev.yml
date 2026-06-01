@@ -1,0 +1,77 @@
+version: '3.8'
+
+# Development override - enables hot reload, skips nginx
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: visionhire-backend-dev
+    volumes:
+      - ./backend/src:/app/src
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+    command: npm run dev
+    ports:
+      - "5000:5000"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - visionhire-net
+
+  worker-evaluation:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: visionhire-worker-eval-dev
+    volumes:
+      - ./backend/src:/app/src
+    command: node src/workers/evaluationWorker.js
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - visionhire-net
+
+  worker-autosubmit:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    container_name: visionhire-worker-autosubmit-dev
+    volumes:
+      - ./backend/src:/app/src
+    command: node src/workers/autoSubmitWorker.js
+    env_file: ./backend/.env
+    environment:
+      - NODE_ENV=development
+      - REDIS_HOST=redis
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - visionhire-net
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: visionhire-redis-dev
+    ports:
+      - "6379:6379"
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - visionhire-net
+
+networks:
+  visionhire-net:
+    driver: bridge

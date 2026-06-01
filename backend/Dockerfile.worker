@@ -1,0 +1,16 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm ci --only=production && npm cache clean --force
+
+COPY src/ ./src/
+RUN mkdir -p logs
+
+RUN addgroup -g 1001 -S nodejs && adduser -S visionhire -u 1001
+RUN chown -R visionhire:nodejs /app
+USER visionhire
+
+# Default command is overridden in docker-compose
+CMD ["node", "src/workers/evaluationWorker.js"]
