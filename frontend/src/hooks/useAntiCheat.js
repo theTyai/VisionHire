@@ -115,13 +115,6 @@ export const useAntiCheat = ({ onViolationLimit, tabLimit = 3 } = {}) => {
       }
     };
 
-    // ── Screen capture detection (limited browser support)
-    const handleScreenCapture = (e) => {
-      if (e.key === 'PrintScreen') {
-        recordViolation('screen_capture_attempt', 'Print screen detected', {}, 'high');
-      }
-    };
-
     // Register all listeners
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     document.addEventListener('visibilitychange', handleVisibilityChange);

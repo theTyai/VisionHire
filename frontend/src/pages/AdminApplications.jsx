@@ -13,9 +13,9 @@ export default function AdminApplications() {
   useEffect(() => {
     fetchApplications();
     fetchSettings();
-  }, []);
+  }, [fetchApplications, fetchSettings]);
 
-  const fetchSettings = async () => {
+  const fetchSettings = React.useCallback(async () => {
     try {
       const res = await fetch('/api/settings');
       const data = await res.json();
@@ -25,7 +25,7 @@ export default function AdminApplications() {
     } catch (err) {
       console.error(err);
     }
-  };
+  }, []);
 
   const handleToggleSetting = async (key) => {
     try {
@@ -47,7 +47,7 @@ export default function AdminApplications() {
     }
   };
 
-  const fetchApplications = async () => {
+  const fetchApplications = React.useCallback(async () => {
     try {
       const res = await fetch('/api/applications', {
         headers: { Authorization: `Bearer ${token}` }
@@ -61,7 +61,7 @@ export default function AdminApplications() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {

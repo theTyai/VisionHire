@@ -1,6 +1,6 @@
 import { io } from 'socket.io-client';
 import { store } from '../store';
-import { addViolation, incrementTabSwitch, setServerEndTime } from '../store/slices/attemptSlice';
+import { setServerEndTime } from '../store/slices/attemptSlice';
 import { addActiveCandidate, removeActiveCandidate, updateActiveCount } from '../store/slices/adminSlice';
 import { addToast, addNotification } from '../store/slices/uiSlice';
 

@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { useDispatch, useSelector } from 'react-redux';
+import { useDispatch } from 'react-redux';
 import { addToast } from '../store/slices/uiSlice';
 import api from '../services/api';
 import AppLayout from '../components/common/AppLayout';
@@ -20,7 +20,7 @@ export default function AdminQuestions() {
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef();
 
-  const fetchQuestions = async () => {
+  const fetchQuestions = React.useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await api.get('/questions', { params: { assessmentId } });
@@ -29,9 +29,9 @@ export default function AdminQuestions() {
       dispatch(addToast({ type: 'error', message: 'Failed to fetch questions.' }));
     }
     setLoading(false);
-  };
+  }, [assessmentId, dispatch]);
 
-  useEffect(() => { fetchQuestions(); }, [assessmentId]);
+  useEffect(() => { fetchQuestions(); }, [fetchQuestions]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

@@ -1,8 +1,8 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/slices/authSlice';
-import { toggleDarkMode, removeToast } from '../../store/slices/uiSlice';
+import { toggleDarkMode } from '../../store/slices/uiSlice';
 
 export default function AppLayout({ children }) {
   const dispatch = useDispatch();

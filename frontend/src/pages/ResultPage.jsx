@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { RadialBarChart, RadialBar, PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
 import api from '../services/api';
 import AppLayout from '../components/common/AppLayout';
 
 export default function ResultPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
-  const { user } = useSelector(s => s.auth);
+
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(true);
   const [pollingCount, setPollingCount] = useState(0);

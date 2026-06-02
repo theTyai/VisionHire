@@ -22,6 +22,33 @@ export const useAutosave = () => {
   const bulkIntervalRef = useRef(null);
   const retryQueues = useRef({}); // { questionId: { attempts, timer } }
 
+  // ── Retry mechanism
+  const scheduleRetry = useCallback((questionId, answerData, source) => {
+    if (!retryQueues.current[questionId]) {
+      retryQueues.current[questionId] = { attempts: 0 };
+    }
+
+    const retryState = retryQueues.current[questionId];
+    if (retryState.attempts >= MAX_RETRY_ATTEMPTS) {
+      console.warn(`Max retries reached for question ${questionId}. Answer preserved in localStorage.`);
+      return;
+    }
+
+    retryState.attempts++;
+    const delay = RETRY_DELAY_MS * Math.pow(2, retryState.attempts - 1); // exponential backoff
+
+    retryState.timer = setTimeout(() => {
+      dispatch(autosaveSingle({
+        attemptId,
+        questionId,
+        selectedOptions: answerData.selectedOptions || [],
+        isMarkedForReview: answerData.isMarkedForReview || false,
+        timeSpent: answerData.timeSpent || 0,
+        source: 'retry',
+      }));
+    }, delay);
+  }, [attemptId, dispatch]);
+
   // ── Per-answer debounced save
   const debouncedSave = useCallback((questionId, answerData, source = 'option_click') => {
     if (!attemptId || !questionId) return;
@@ -56,47 +83,12 @@ export const useAutosave = () => {
         scheduleRetry(questionId, answerData, source);
       }
     }, DEBOUNCE_MS);
-  }, [attemptId, dispatch]);
-
-  // ── Retry mechanism
-  const scheduleRetry = useCallback((questionId, answerData, source) => {
-    if (!retryQueues.current[questionId]) {
-      retryQueues.current[questionId] = { attempts: 0 };
-    }
-
-    const retryState = retryQueues.current[questionId];
-    if (retryState.attempts >= MAX_RETRY_ATTEMPTS) {
-      console.warn(`Max retries reached for question ${questionId}. Answer preserved in localStorage.`);
-      return;
-    }
-
-    retryState.attempts++;
-    const delay = RETRY_DELAY_MS * Math.pow(2, retryState.attempts - 1); // exponential backoff
-
-    retryState.timer = setTimeout(() => {
-      dispatch(autosaveSingle({
-        attemptId,
-        questionId,
-        selectedOptions: answerData.selectedOptions || [],
-        isMarkedForReview: answerData.isMarkedForReview || false,
-        timeSpent: answerData.timeSpent || 0,
-        source: 'retry',
-      }));
-    }, delay);
-  }, [attemptId, dispatch]);
+  }, [attemptId, dispatch, scheduleRetry]);
 
   // ── Bulk periodic save (15s interval)
   const performBulkSave = useCallback(() => {
     if (!attemptId) return;
 
-    const dirtyAnswers = Object.entries(answers)
-      .filter(([, ans]) => ans?.isDirty)
-      .map(([questionId, ans]) => ({
-        questionId,
-        selectedOptions: ans.selectedOptions || [],
-        isMarkedForReview: ans.isMarkedForReview || false,
-        timeSpent: ans.timeSpent || 0,
-      }));
 
     // Always send a bulk save as a snapshot even if nothing is dirty
     const allAnswers = Object.entries(answers).map(([questionId, ans]) => ({
@@ -158,9 +150,11 @@ export const useAutosave = () => {
 
   // ── Cleanup debounce timers
   useEffect(() => {
+    const activeDebounceTimers = debounceTimers.current;
+    const activeRetryQueues = retryQueues.current;
     return () => {
-      Object.values(debounceTimers.current).forEach(clearTimeout);
-      Object.values(retryQueues.current).forEach(r => r.timer && clearTimeout(r.timer));
+      Object.values(activeDebounceTimers).forEach(clearTimeout);
+      Object.values(activeRetryQueues).forEach(r => r.timer && clearTimeout(r.timer));
     };
   }, []);
 

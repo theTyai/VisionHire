@@ -2,10 +2,9 @@ import React, { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchAnalytics } from '../store/slices/adminSlice';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import AppLayout from '../components/common/AppLayout';
 
-const COLORS = ['#4a63ff', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function AdminAnalytics() {
   const { assessmentId } = useParams();
