@@ -10,11 +10,6 @@ export default function AdminApplications() {
   const [searchTerm, setSearchTerm] = useState('');
   const [settings, setSettings] = useState({ isApplicationOpen: true, isOAEnabled: false });
 
-  useEffect(() => {
-    fetchApplications();
-    fetchSettings();
-  }, [fetchApplications, fetchSettings]);
-
   const fetchSettings = React.useCallback(async () => {
     try {
       const res = await fetch('/api/settings');
@@ -62,6 +57,11 @@ export default function AdminApplications() {
       setLoading(false);
     }
   }, [token]);
+
+  useEffect(() => {
+    fetchApplications();
+    fetchSettings();
+  }, [fetchApplications, fetchSettings]);
 
   const handleUpdateStatus = async (id, newStatus) => {
     try {
